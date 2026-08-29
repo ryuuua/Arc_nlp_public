@@ -1,0 +1,2 @@
+dataset: twenty_newsgroups
+model: gemma3_27b_it

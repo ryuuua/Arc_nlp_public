@@ -1,0 +1,2 @@
+dataset: ag_news
+model: llama_embed_nemotron_8b

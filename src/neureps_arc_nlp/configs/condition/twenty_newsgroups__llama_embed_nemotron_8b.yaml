@@ -1,0 +1,2 @@
+dataset: twenty_newsgroups
+model: llama_embed_nemotron_8b

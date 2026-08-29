@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neureps-arc-nlp"
+version = "0.2.0"
+description = "Minimal standalone projected-gradient archetypal-analysis fitter"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "hydra-core>=1.3,<2",
+  "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+gpu = [
+  "torch>=2.2",
+]
+test = [
+  "pytest>=8,<10",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+neureps-aa = "neureps_arc_nlp.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neureps_arc_nlp"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["src/neureps_arc_nlp/solver.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

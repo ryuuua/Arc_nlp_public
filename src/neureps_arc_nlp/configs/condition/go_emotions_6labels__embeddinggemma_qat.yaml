@@ -1,0 +1,2 @@
+dataset: go_emotions_6labels
+model: embeddinggemma_qat

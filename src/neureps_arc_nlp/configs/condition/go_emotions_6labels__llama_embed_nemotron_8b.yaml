@@ -1,0 +1,2 @@
+dataset: go_emotions_6labels
+model: llama_embed_nemotron_8b

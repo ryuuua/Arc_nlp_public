@@ -1,0 +1,2 @@
+dataset: ag_news
+model: qwen3_embedding

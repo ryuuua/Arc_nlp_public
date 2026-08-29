@@ -1,0 +1,2 @@
+dataset: ag_news
+model: deepseek_r1_distill_qwen_14b

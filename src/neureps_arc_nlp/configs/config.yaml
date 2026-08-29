@@ -1,0 +1,48 @@
+defaults:
+  - condition: ag_news__deepseek_r1_distill_qwen_14b
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+k: 90
+seed: 0
+
+input:
+  path: ${oc.env:AA_EMBEDDING_ROOT,embeddings}/${condition.dataset}__${condition.model}.npz
+  keys:
+    train: X_train
+    valid: X_valid
+    labels_valid: labels_valid
+
+output:
+  dir: ${oc.env:AA_OUTPUT_ROOT,outputs}/${condition.dataset}/${condition.model}/seed_${seed}
+  overwrite: false
+
+solver:
+  id: aa_projected_gradient_v2
+  backend: auto
+  device: auto
+  dtype: float32
+  n_init: 1
+  max_iter: 200
+  tol: 1.0e-5
+  method_params:
+    b_update: aa_projected_gradient_v2
+    a_max_iter: 300
+    a_tol: 1.0e-6
+    b_max_iter: 300
+    b_tol: 1.0e-6
+    a_step_scale: 1.0
+    b_step_scale: 1.0
+    backtracking_factor: 0.5
+    max_backtracks: 20
+    objective_patience: 3
+    min_outer_iterations: 5
+    record_history: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
