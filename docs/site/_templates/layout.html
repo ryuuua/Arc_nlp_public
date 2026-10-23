@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="{{ page.lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ page.description }}">
+  <meta name="color-scheme" content="light">
+  <title>{{ page.title }} · {{ site.title }}</title>
+  <link rel="stylesheet" href="{{ relative_url(current, 'assets/site.css') }}">
+  <link rel="stylesheet" href="{{ relative_url(current, 'assets/code.css') }}">
+  <script defer src="{{ relative_url(current, 'assets/site.js') }}"></script>
+</head>
+<body data-site-root="{{ relative_url(current, 'index.html') }}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="wordmark" href="{{ relative_url(current, 'index.html') }}" aria-label="Arc_nlp home"><span class="brand-symbol" aria-hidden="true">A<span>•</span></span>Arc<span class="wordmark-light">_nlp</span></a>
+    <span class="topbar-caption">Research &amp; documentation</span>
+    <div class="topbar-actions">
+      <button class="search-toggle" type="button" aria-haspopup="dialog" aria-controls="search-dialog"><span aria-hidden="true">⌕</span> Search docs <kbd>/</kbd></button>
+      <a class="repository-link" href="{{ site.repository_url }}">GitHub <span aria-hidden="true">↗</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    </div>
+  </header>
+  <div class="docs-layout">
+    <aside class="sidebar" id="site-nav">
+      <nav aria-label="Documentation">
+      {% for group, items in navigation_groups %}
+        <div class="nav-group"><p class="nav-heading">{{ group }}</p>
+        {% for item in items %}<a href="{{ relative_url(current, item.url) }}"{% if item.url == current %} aria-current="page"{% endif %}>{{ item.title }}</a>{% endfor %}
+        </div>
+      {% endfor %}
+      </nav>
+      <p class="sidebar-note">Reusable embeddings.<br>Interpretable geometry.</p>
+    </aside>
+    <main id="main" class="content{% if current == 'index.html' %} landing{% endif %}" tabindex="-1">
+      <div class="eyebrow">{{ page.group }}</div>
+      <article>{{ content }}</article>
+      <footer class="page-footer">
+        <span>Arc_nlp · Research software</span>
+        <a href="{{ relative_url(current, 'source-manifest.json') }}">Build provenance</a>
+      </footer>
+    </main>
+    <aside class="toc" aria-label="On this page">
+    {% if toc %}<p class="nav-heading">On this page</p><nav>{% for heading in toc %}<a class="toc-level-{{ heading.level }}" href="#{{ heading.id }}">{{ heading.title }}</a>{% endfor %}</nav>{% endif %}
+    </aside>
+  </div>
+  <dialog id="search-dialog" aria-labelledby="search-title">
+    <div class="search-header"><h2 id="search-title">Search documentation</h2><button type="button" class="search-close" aria-label="Close search">×</button></div>
+    <label class="sr-only" for="search-input">Search terms</label>
+    <input id="search-input" type="search" placeholder="Methods, solvers, preprocessing…" autocomplete="off">
+    <p id="search-status" class="search-status" role="status">Type a term to search the documentation.</p>
+    <ol id="search-results"></ol>
+  </dialog>
+</body>
+</html>

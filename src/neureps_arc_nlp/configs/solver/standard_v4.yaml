@@ -1,0 +1,32 @@
+# @package _global_
+solver:
+  id: aa_projected_gradient_v4
+  backend: numpy
+  device: cpu
+  dtype: float64
+  deterministic: true
+  n_init: 1
+  max_iter: 200
+  tol: 1.0e-5
+  method_params:
+    b_update: aa_projected_gradient_v4
+    a_max_iter: 300
+    a_tol: 1.0e-6
+    b_max_iter: 300
+    b_tol: 1.0e-6
+    a_step_scale: 1.0
+    b_step_scale: 1.0
+    backtracking_factor: 0.5
+    max_backtracks: 20
+    objective_patience: 3
+    min_outer_iterations: 5
+    record_history: true
+    stationarity_gap_tol: 1.0e-6
+    stationarity_step_tol: 1.0e-6
+    stationarity_check_interval: 5
+    max_refinements: 2
+    refinement_multiplier: 2
+    perturbation_restarts: 0
+    perturbation_strength: 0.1
+output:
+  dir: ${oc.env:AA_OUTPUT_ROOT,outputs}/${condition.dataset}/${condition.model}/solver=${solver.id}/k=${k}/seed_${seed}

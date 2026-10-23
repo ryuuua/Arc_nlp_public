@@ -15,41 +15,22 @@ from hydra.utils import get_original_cwd
 from omegaconf import DictConfig, OmegaConf
 
 from . import __version__
-from .metrics import compute_all_metrics
-from .solver import (
-    SOLVER_CONTRACT_VERSION,
-    SOLVER_ID,
-    fit_standard_aa_v2_numpy,
-    infer_standard_aa_v2_numpy,
+from .artifacts import (
+    _canonical_json,
+    _sha256_file,
+    _write_json,
+    inference_state,
+    save_fit_arrays,
+    write_failure_evidence,
 )
-
-
-def _canonical_json(payload: Any) -> bytes:
-    return json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
-
-
-def _write_json(path: Path, payload: Any) -> None:
-    path.write_bytes(_canonical_json(payload) + b"\n")
+from .dispatch import SolverSpec, preflight_solver, resolve_solver
+from .metrics import compute_all_metrics
 
 
 def _write_jsonl(path: Path, rows: list[Mapping[str, Any]]) -> None:
     with path.open("wb") as handle:
         for row in rows:
             handle.write(_canonical_json(dict(row)) + b"\n")
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _resolve_path(value: Any, base_dir: Path) -> Path:
@@ -85,9 +66,11 @@ def _normalized_validation(X_valid: np.ndarray, result: Mapping[str, Any]) -> np
     ) / float(result["normalization_centered_scale"])
 
 
-def _fit_numpy(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tuple[dict[str, Any], np.ndarray]:
+def _fit_numpy(
+    cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray, spec: SolverSpec,
+) -> tuple[dict[str, Any], np.ndarray]:
     method_params = OmegaConf.to_container(cfg.solver.method_params, resolve=True)
-    result = fit_standard_aa_v2_numpy(
+    result = spec.fit("numpy")(
         X_train,
         k=int(cfg.k),
         seed=int(cfg.seed),
@@ -98,7 +81,7 @@ def _fit_numpy(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tup
         method_params=method_params,
         dtype=str(cfg.solver.dtype),
     )
-    A_valid = infer_standard_aa_v2_numpy(
+    A_valid = spec.infer("numpy")(
         _normalized_validation(X_valid, result),
         result["normalization_archetypes"],
         max_iter=result["inference_max_iter"],
@@ -109,27 +92,39 @@ def _fit_numpy(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tup
     return result, A_valid
 
 
-def _fit_torch(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tuple[dict[str, Any], np.ndarray]:
+def _fit_torch(
+    cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray, spec: SolverSpec,
+) -> tuple[dict[str, Any], np.ndarray]:
+    runtime_metadata = None
+    if spec.revision != "v2":
+        from .aa_runtime_v2 import configure_torch_runtime_v2
+
+        runtime = configure_torch_runtime_v2(
+            seed=int(cfg.seed), device=cfg.solver.device,
+            deterministic=cfg.solver.get("deterministic", True),
+        )
+        runtime_metadata = runtime.metadata
     try:
         import torch
     except ImportError as exc:
         raise RuntimeError("Torch backend requires: python -m pip install -e '.[gpu]'") from exc
 
-    from .solver import fit_standard_aa_v2_torch, infer_standard_aa_v2_torch
-
     requested_device = str(cfg.solver.device)
-    if requested_device == "auto":
-        requested_device = "cuda" if torch.cuda.is_available() else "cpu"
-    if requested_device == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("solver.device=cuda was requested but CUDA is unavailable")
-    device = torch.device(requested_device)
+    if spec.revision == "v2":
+        if requested_device == "auto":
+            requested_device = "cuda" if torch.cuda.is_available() else "cpu"
+        if requested_device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("solver.device=cuda was requested but CUDA is unavailable")
+        device = torch.device(requested_device)
+        torch.manual_seed(int(cfg.seed))
+        if device.type == "cuda":
+            torch.cuda.manual_seed_all(int(cfg.seed))
+    else:
+        device = runtime.device
     dtype = torch.float32 if str(cfg.solver.dtype) == "float32" else torch.float64
-    torch.manual_seed(int(cfg.seed))
-    if device.type == "cuda":
-        torch.cuda.manual_seed_all(int(cfg.seed))
 
     method_params = OmegaConf.to_container(cfg.solver.method_params, resolve=True)
-    result = fit_standard_aa_v2_torch(
+    result = spec.fit("torch")(
         torch,
         X_train,
         k=int(cfg.k),
@@ -142,7 +137,7 @@ def _fit_torch(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tup
         device=device,
         dtype=dtype,
     )
-    A_valid = infer_standard_aa_v2_torch(
+    A_valid = spec.infer("torch")(
         torch,
         _normalized_validation(X_valid, result),
         result["normalization_archetypes"],
@@ -152,15 +147,21 @@ def _fit_torch(cfg: DictConfig, X_train: np.ndarray, X_valid: np.ndarray) -> tup
         device=device,
         dtype=dtype,
     )
+    if runtime_metadata is not None:
+        result["extras"]["solver_diagnostics"]["runtime"] = runtime_metadata
     return result, A_valid
 
 
-def _select_backend(cfg: DictConfig) -> str:
+def _select_backend(cfg: DictConfig, spec: SolverSpec) -> str:
     backend = str(cfg.solver.backend)
     if backend != "auto":
         if backend not in {"numpy", "torch"}:
             raise ValueError("solver.backend must be auto, numpy, or torch")
         return backend
+    if spec.revision != "v2":
+        # The explicit device chooses the new runtime without touching CUDA
+        # before its deterministic-runtime preconditions are configured.
+        return "numpy" if cfg.solver.device == "cpu" else "torch"
     try:
         import torch
     except ImportError:
@@ -176,17 +177,40 @@ def _version(name: str) -> str:
 
 
 def run_fit(cfg: DictConfig, *, base_dir: Path | None = None) -> Path:
+    """Fit the selected solver and atomically publish the four success artifacts."""
     root = (base_dir or Path.cwd()).resolve()
-    if str(cfg.solver.id) != SOLVER_ID:
-        raise ValueError(f"this repository supports only solver.id={SOLVER_ID}")
+    params = OmegaConf.to_container(cfg.solver.method_params, resolve=True)
+    if not isinstance(params, dict):
+        raise TypeError("solver.method_params must be a mapping")
+    spec = resolve_solver(str(cfg.solver.id), params)
     input_path = _resolve_path(cfg.input.path, root)
     output_path = _resolve_path(cfg.output.dir, root)
     X_train, X_valid, labels_valid = _load_input(input_path, cfg.input["keys"])
     if int(cfg.k) > X_train.shape[0]:
         raise ValueError(f"k={int(cfg.k)} exceeds n_train={X_train.shape[0]}")
 
-    backend = _select_backend(cfg)
-    result, A_valid = _fit_torch(cfg, X_train, X_valid) if backend == "torch" else _fit_numpy(cfg, X_train, X_valid)
+    preflight_solver(spec, X_train, X_valid, cfg, params)
+    backend = _select_backend(cfg, spec)
+    resolved_config = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(resolved_config, dict):
+        raise TypeError("resolved Hydra config must be a mapping")
+    try:
+        result, A_valid = (
+            _fit_torch(cfg, X_train, X_valid, spec)
+            if backend == "torch" else _fit_numpy(cfg, X_train, X_valid, spec)
+        )
+    except Exception as failure:
+        failure_class = getattr(spec.module, "AAOptimizationFailure", None)
+        if failure_class is not None and isinstance(failure, failure_class):
+            try:
+                evidence = write_failure_evidence(
+                    output_path, failure, spec=spec, X_train=X_train,
+                    input_path=input_path, resolved_config=resolved_config,
+                )
+                failure.add_note(f"Failure-only evidence saved to {evidence}")
+            except Exception as write_error:
+                failure.add_note(f"Failure evidence could not be saved: {type(write_error).__name__}: {write_error}")
+        raise
     diagnostics = dict(result["extras"]["solver_diagnostics"])
     history = [dict(row) for row in diagnostics.pop("objective_history")]
     metrics = compute_all_metrics(
@@ -206,23 +230,15 @@ def run_fit(cfg: DictConfig, *, base_dir: Path | None = None) -> Path:
     temporary = Path(tempfile.mkdtemp(prefix=f".{output_path.name}.", dir=output_path.parent))
     try:
         arrays_path = temporary / "fit_arrays.npz"
-        np.savez_compressed(
-            arrays_path,
-            archetypes_Z=np.asarray(result["archetypes_Z"]),
-            archetype_weights_B=np.asarray(result["archetype_weights_B"]),
-            coefficients_A_train=np.asarray(result["coefficients_A_train"]),
-            coefficients_A_valid=np.asarray(A_valid),
-        )
+        save_fit_arrays(arrays_path, result, A_valid)
         _write_jsonl(temporary / "optimization_history.jsonl", history)
         diagnostics["objective_history_file"] = "optimization_history.jsonl"
+        diagnostics["inference_state"] = inference_state(result, spec, str(cfg.solver.dtype))
         _write_json(temporary / "solver_diagnostics.json", diagnostics)
 
-        resolved_config = OmegaConf.to_container(cfg, resolve=True)
-        if not isinstance(resolved_config, dict):
-            raise TypeError("resolved Hydra config must be a mapping")
-        solver_path = Path(__file__).with_name("solver.py")
+        source_hashes = spec.source_hashes()
         payload = {
-            "schema_version": "neureps_aa_fit.v1",
+            "schema_version": "neureps_aa_fit.v1" if spec.revision == "v2" else "neureps_aa_fit.v2",
             "package_version": __version__,
             "condition": {
                 "dataset": str(cfg.condition.dataset),
@@ -231,8 +247,8 @@ def run_fit(cfg: DictConfig, *, base_dir: Path | None = None) -> Path:
                 "seed": int(cfg.seed),
             },
             "solver": {
-                "id": SOLVER_ID,
-                "contract_version": SOLVER_CONTRACT_VERSION,
+                "id": spec.solver_id,
+                "contract_version": spec.contract_version,
                 "backend": backend,
                 "device": str(result["device_used"]),
                 "dtype": str(result["extras"]["dtype"]),
@@ -251,7 +267,8 @@ def run_fit(cfg: DictConfig, *, base_dir: Path | None = None) -> Path:
                 "input_path": str(input_path),
                 "input_sha256": _sha256_file(input_path),
                 "resolved_config_sha256": hashlib.sha256(_canonical_json(resolved_config)).hexdigest(),
-                "solver_source_sha256": _sha256_file(solver_path),
+                "solver_source_sha256": source_hashes[f"{spec.module_name}.py"],
+                "solver_sources_sha256": source_hashes,
                 "libraries": {
                     "numpy": _version("numpy"),
                     "hydra-core": _version("hydra-core"),
@@ -262,9 +279,13 @@ def run_fit(cfg: DictConfig, *, base_dir: Path | None = None) -> Path:
                 "arrays": "fit_arrays.npz",
                 "arrays_sha256": _sha256_file(arrays_path),
                 "solver_diagnostics": "solver_diagnostics.json",
+                "solver_diagnostics_sha256": _sha256_file(temporary / "solver_diagnostics.json"),
                 "optimization_history": "optimization_history.jsonl",
             },
         }
+        for key in ("solver_implementation_version", "solver_implementation_digest", "solver_dependency_identities"):
+            if key in result["extras"]:
+                payload["solver"][key] = result["extras"][key]
         _write_json(temporary / "metrics.json", payload)
         os.replace(temporary, output_path)
     finally:

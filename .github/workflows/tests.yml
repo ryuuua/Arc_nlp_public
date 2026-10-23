@@ -1,0 +1,48 @@
+name: portable-package
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install portable package and test tools
+        run: python -m pip install --disable-pip-version-check '.[test,docs]'
+      - name: Install optional Torch CPU backend
+        if: matrix.python == '3.12'
+        run: python -m pip install --disable-pip-version-check 'torch>=2.2' --index-url https://download.pytorch.org/whl/cpu
+      - name: Run tests
+        run: python -m pytest -q -p no:cacheprovider
+      - name: Check maintained adapters and documentation tools
+        run: python -m ruff check src scripts examples
+      - name: Run the public synthetic example
+        run: |
+          for profile in paper_v2 standard_v3 standard_v4; do
+            python examples/synthetic_fit.py --solver "$profile"
+          done
+      - name: Verify the source tree remains clean
+        run: git diff --exit-code
