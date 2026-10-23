@@ -27,10 +27,10 @@
     },
     {
       "slug": "conference/index",
-      "title": "Presentation entry",
+      "title": "学会用ページ",
       "group": "Explore",
-      "description": "Presentation entry — Arc_nlp portable research package.",
-      "lang": "en"
+      "description": "原型分析で埋め込み表現を理解する。Arc_nlpの研究課題、実行例、ソースコードを紹介します。",
+      "lang": "ja"
     },
     {
       "slug": "mathematics",
