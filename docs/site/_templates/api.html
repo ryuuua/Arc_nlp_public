@@ -1,0 +1,17 @@
+<h1>{{ module.title }}</h1>
+<p class="lead">{{ module.summary }}</p>
+<p><span class="badge">{% if module.stability == 'public' %}Package interface{% else %}Advanced implementation{% endif %}</span> <code>{{ module.module }}</code></p>
+<div class="callout"><strong>Source-backed reference.</strong> Signatures, declared fields, docstrings, and source excerpts below come from the local Python syntax tree; explanatory paragraphs are authored for this guide. The build does not import or execute the package. Classes show their declaration and annotated fields; runtime-generated constructor signatures are not inferred. Symbols are imported from the named module, not from the package root.</div>
+{% for symbol in module.symbols %}
+<section class="api-symbol" aria-labelledby="{{ symbol.name }}">
+  <h2 id="{{ symbol.name }}">{{ symbol.name }} <a class="anchor-link" href="#{{ symbol.name }}" aria-label="Link to {{ symbol.name }}">#</a></h2>
+  <pre class="signature"><code>{{ symbol.signature }}</code></pre>
+  {% if symbol.explanation %}<p class="symbol-explanation">{{ symbol.explanation }}</p>{% endif %}
+  {% if symbol.docstring %}<pre class="docstring">{{ symbol.docstring }}</pre>{% elif not symbol.explanation %}<p class="muted">No symbol docstring is present in this source snapshot. See the guide and source excerpt for context.</p>{% endif %}
+  {% if symbol.fields %}<div class="table-wrap"><table><caption>Declared annotated fields</caption><thead><tr><th>Field</th><th>Type</th><th>Declared default</th></tr></thead><tbody>{% for field in symbol.fields %}<tr><td><code>{{ field.name }}</code></td><td><code>{{ field.annotation }}</code></td><td>{% if field.default is not none %}<code>{{ field.default }}</code>{% else %}Required / no default declared{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+  <details class="source-disclosure"><summary>View source · lines {{ symbol.line_start }}–{{ symbol.line_end }}</summary>
+    <p class="source-meta"><code>{{ module.source }}</code> · lines {{ symbol.line_start }}–{{ symbol.line_end }}<br>Module SHA-256: <code>{{ module.sha256 }}</code><br>Excerpt SHA-256: <code>{{ symbol.sha256 }}</code></p>
+    <pre class="highlight"><code class="language-python">{{ symbol.highlighted }}</code></pre>
+  </details>
+</section>
+{% endfor %}

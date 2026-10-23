@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "title": "Arc_nlp",
+  "tagline": "Interpretable geometry for embedding representations.",
+  "repository_url": "https://github.com/ryuuua/Arc_nlp_public",
+  "pages": [
+    {
+      "slug": "index",
+      "title": "Overview",
+      "group": "Explore",
+      "description": "Overview — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "getting-started",
+      "title": "Getting started",
+      "group": "Explore",
+      "description": "Getting started — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "tutorial",
+      "title": "First analysis",
+      "group": "Explore",
+      "description": "First analysis — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "conference/index",
+      "title": "Presentation entry",
+      "group": "Explore",
+      "description": "Presentation entry — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "mathematics",
+      "title": "Mathematical model",
+      "group": "Guides",
+      "description": "Mathematical model — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "preprocessing",
+      "title": "Coordinate frames",
+      "group": "Guides",
+      "description": "Coordinate frames — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "solvers",
+      "title": "Solvers & convergence",
+      "group": "Guides",
+      "description": "Solvers & convergence — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "evaluation",
+      "title": "Evaluation",
+      "group": "Guides",
+      "description": "Evaluation — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "architecture",
+      "title": "Code architecture",
+      "group": "Development",
+      "description": "Code architecture — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "reproducibility",
+      "title": "Reproducibility",
+      "group": "Development",
+      "description": "Reproducibility — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "research",
+      "title": "Research directions",
+      "group": "Explore",
+      "description": "Research directions — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "contributing",
+      "title": "Contributing",
+      "group": "Development",
+      "description": "Contributing — Arc_nlp portable research package.",
+      "lang": "en"
+    },
+    {
+      "slug": "ja/index",
+      "title": "日本語の概要",
+      "group": "日本語",
+      "description": "日本語の概要 — Arc_nlp portable research package.",
+      "lang": "ja"
+    },
+    {
+      "slug": "ja/mathematics",
+      "title": "数理モデル",
+      "group": "日本語",
+      "description": "数理モデル — Arc_nlp portable research package.",
+      "lang": "ja"
+    }
+  ],
+  "api": [
+    {
+      "slug": "app",
+      "module": "neureps_arc_nlp.app",
+      "source": "src/neureps_arc_nlp/app.py",
+      "title": "Fit a condition",
+      "summary": "Fit prepared arrays through the distributed Hydra configuration.",
+      "stability": "public",
+      "symbols": [
+        "run_fit"
+      ],
+      "explanations": {
+        "run_fit": "Load the configured input archive, fit the explicitly selected solver, infer Validation coefficients and write the result directory. Labels support evaluation rather than unsupervised dictionary fitting. Existing outputs are protected unless the caller explicitly enables overwrite."
+      }
+    },
+    {
+      "slug": "artifacts",
+      "module": "neureps_arc_nlp.artifacts",
+      "source": "src/neureps_arc_nlp/artifacts.py",
+      "title": "Saved fits & inference",
+      "summary": "Reload the stored training frame and infer coefficients for new observations.",
+      "stability": "public",
+      "symbols": [
+        "SavedFit",
+        "load_fit",
+        "transform"
+      ],
+      "explanations": {
+        "SavedFit": "A saved fitted representation with archetypes_Z and solver_id. Its transform method accepts new original-frame rows and applies the recorded training normalization and solver inference policy; it does not relearn the dictionary.",
+        "load_fit": "Read a fitted output directory and reconstruct its saved inference state. The recorded solver identity, precision and coordinate frame govern replay. Use this entry point rather than inferring normalization from a new batch.",
+        "transform": "Infer coefficients for new observations by delegating to the supplied SavedFit. The returned matrix has one row per observation and one column per archetype."
+      }
+    },
+    {
+      "slug": "metrics",
+      "module": "neureps_arc_nlp.metrics",
+      "source": "src/neureps_arc_nlp/metrics.py",
+      "title": "Evaluation metrics",
+      "summary": "Measure reconstruction, coefficient usage and Validation label relationships.",
+      "stability": "public",
+      "symbols": [
+        "compute_reconstruction_metrics",
+        "compute_coefficient_metrics",
+        "compute_label_metrics",
+        "compute_all_metrics"
+      ],
+      "explanations": {
+        "compute_reconstruction_metrics": "Compare X with A @ Z in the same coordinate frame. Returns a dictionary: mse is the mean squared Euclidean error per observation, while r2 and paper_variance_explained use centered and uncentered denominators.",
+        "compute_coefficient_metrics": "Summarize simplex coefficients by mean maximum weight, order-2 effective K, active-anchor count, dominant assignment share and contribution-rank counts. These are concentration measures, not counts of semantic concepts.",
+        "compute_label_metrics": "Describe label relationships using usage-weighted purity and normalized label–coefficient mutual information. Single-label arrays and nonnegative multilabel membership are supported. Zero label entropy is rejected; these measurements are not classifier accuracy.",
+        "compute_all_metrics": "Assemble Train/Validation reconstruction, coefficient usage and Validation label measurements together with dimensions and a metric-version identity."
+      }
+    },
+    {
+      "slug": "solver",
+      "module": "neureps_arc_nlp.solver",
+      "source": "src/neureps_arc_nlp/solver.py",
+      "title": "Standard AA v2",
+      "summary": "Preserved paper-oriented Standard AA kernel and inference interface.",
+      "stability": "low-level",
+      "symbols": [
+        "StandardAAV2Config",
+        "fit_standard_aa_v2_numpy",
+        "infer_standard_aa_v2_numpy",
+        "read_standard_aa_diagnostics"
+      ],
+      "explanations": {
+        "StandardAAV2Config": "Numerical update and objective-stopping settings for the preserved v2 kernel. This is distinct from a global optimality guarantee.",
+        "fit_standard_aa_v2_numpy": "Fit Standard AA with NumPy and return factor arrays, training normalization, inference settings and diagnostics. Most users can use run_fit to obtain a saved result directory.",
+        "infer_standard_aa_v2_numpy": "Infer simplex coefficients in the saved solver working frame. This low-level function expects already normalized input and archetypes; SavedFit.transform provides original-frame replay.",
+        "read_standard_aa_diagnostics": "Read version-aware v2 diagnostics without relabeling historical unversioned artifacts as v2. Interpret termination and gradient quantities within the recorded solver contract."
+      }
+    },
+    {
+      "slug": "standard_aa_v3",
+      "module": "neureps_arc_nlp.standard_aa_v3",
+      "source": "src/neureps_arc_nlp/standard_aa_v3.py",
+      "title": "Standard AA v3",
+      "summary": "Explicit dense Standard AA updates for controlled research comparisons.",
+      "stability": "low-level",
+      "symbols": [
+        "StandardAAV3Config",
+        "fit_standard_aa_v3_numpy",
+        "infer_standard_aa_v3_numpy",
+        "read_standard_aa_diagnostics"
+      ],
+      "explanations": {
+        "StandardAAV3Config": "V3 numerical-update and stopping configuration. Its source declaration is separate from the preserved v2 baseline.",
+        "fit_standard_aa_v3_numpy": "Fit the explicit v3 Standard AA implementation using NumPy. Versioned identity, precision and work budgets should be retained when comparing results.",
+        "infer_standard_aa_v3_numpy": "Infer coefficients using saved v3 working coordinates and numerical settings. Prefer SavedFit.transform when starting from original-frame observations.",
+        "read_standard_aa_diagnostics": "Read diagnostics belonging to the v3 solver identity. A successful stop does not by itself certify optimality."
+      }
+    },
+    {
+      "slug": "standard_aa_v4",
+      "module": "neureps_arc_nlp.standard_aa_v4",
+      "source": "src/neureps_arc_nlp/standard_aa_v4.py",
+      "title": "Standard AA v4",
+      "summary": "Explicit float64 Standard AA with approximate stationarity checks and bounded search.",
+      "stability": "low-level",
+      "symbols": [
+        "StandardAAV4Config",
+        "AAOptimizationFailure",
+        "fit_standard_aa_v4_numpy",
+        "infer_standard_aa_v4_numpy",
+        "read_standard_aa_diagnostics"
+      ],
+      "explanations": {
+        "StandardAAV4Config": "Low-level settings for inner updates, line search, progress controls and stopping/search policy. Refinement increases inner-update work; optional restarts add fit attempts.",
+        "AAOptimizationFailure": "A typed numerical failure carrying diagnostic factor state and replay context. Such failure evidence is not a successful fitted representation.",
+        "fit_standard_aa_v4_numpy": "Fit v4 Standard AA with NumPy float64 and the declared stationarity/search policy. For reproducible package outputs, use the standard_v4 profile with run_fit.",
+        "infer_standard_aa_v4_numpy": "Infer coefficients in the saved v4 solver frame. This is a low-level numerical function; SavedFit.transform handles original-frame replay.",
+        "read_standard_aa_diagnostics": "Validate and read v4 solver diagnostics. Approximate first-order checks do not certify local or global optimality."
+      }
+    },
+    {
+      "slug": "aa_stopping_policy",
+      "module": "neureps_arc_nlp.aa_stopping_policy",
+      "source": "src/neureps_arc_nlp/aa_stopping_policy.py",
+      "title": "Stopping & search policy",
+      "summary": "Explicit tolerances, refinement settings and simplex first-order diagnostics.",
+      "stability": "low-level",
+      "symbols": [
+        "PolicyConfig",
+        "resolve_policy",
+        "summarize_simplex_block"
+      ],
+      "explanations": {
+        "PolicyConfig": "Validated settings for approximate first-order tolerances, check cadence, bounded refinement and optional perturbation restarts. Record actual executed work as well as nominal budgets.",
+        "resolve_policy": "Read recognized stopping/search fields and construct PolicyConfig. The owning solver is responsible for validating the complete method-parameter mapping.",
+        "summarize_simplex_block": "Evaluate row-simplex feasibility, a scaled Frank-Wolfe gap and projected displacement using caller-supplied factors and consistent diagnostic projections. It diagnoses factors rather than repairing them."
+      }
+    }
+  ]
+}

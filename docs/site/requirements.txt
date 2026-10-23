@@ -1,0 +1,7 @@
+# Documentation-only build/test dependencies; never installed into the research runtime.
+markdown-it-py==4.0.0
+mdurl==0.1.2
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+Pygments==2.19.2
+pytest==9.0.2

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neureps-arc-nlp"
-version = "0.2.0"
-description = "Minimal standalone projected-gradient archetypal-analysis fitter"
+version = "0.3.0"
+description = "Portable Standard v2/v3/v4 archetypal analysis and research documentation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +21,17 @@ test = [
   "pytest>=8,<10",
   "ruff>=0.9,<1",
 ]
+docs = [
+  "markdown-it-py==4.0.0",
+  "mdurl==0.1.2",
+  "Jinja2==3.1.6",
+  "MarkupSafe==3.0.2",
+  "Pygments==2.19.2",
+]
+
+[project.urls]
+Repository = "https://github.com/ryuuua/Arc_nlp_public"
+Documentation = "https://ryuuua.github.io/Arc_nlp_public/"
 
 [project.scripts]
 neureps-aa = "neureps_arc_nlp.app:main"
@@ -35,7 +46,13 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py311"
 line-length = 120
-extend-exclude = ["src/neureps_arc_nlp/solver.py"]
+extend-exclude = [
+  "src/neureps_arc_nlp/solver.py",
+  "src/neureps_arc_nlp/standard_aa_v3.py",
+  "src/neureps_arc_nlp/standard_aa_v4.py",
+  "src/neureps_arc_nlp/aa_stopping_policy.py",
+  "src/neureps_arc_nlp/aa_runtime_v2.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

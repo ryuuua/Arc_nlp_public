@@ -1,0 +1,10 @@
+<h1>API reference</h1>
+<p class="lead">A curated map from research concepts to the code that implements them.</p>
+<p>Start with the package interfaces for fitting, transforming, and evaluating representations. Advanced implementation references describe solver policy and numerical building blocks. They are not a separate stability promise or a complete list of the repository's modules.</p>
+<p>Every symbol page includes the current declaration, available docstring, and a source excerpt identified by its exact local SHA-256 and line range. Source snapshots can include changes that are not yet committed.</p>
+{% for category in ['public', 'low-level'] %}
+<h2 id="{{ category }}">{% if category == 'public' %}Package interfaces{% else %}Advanced implementation{% endif %}</h2>
+<div class="card-grid">
+{% for module in modules if module.stability == category %}<a class="card" href="{{ module.slug }}.html"><span class="card-label">{{ module.module }}</span><h3>{{ module.title }}</h3><p>{{ module.summary }}</p><span class="card-arrow" aria-hidden="true">↗</span></a>{% endfor %}
+</div>
+{% endfor %}
