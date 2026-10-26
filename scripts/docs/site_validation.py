@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
-from site_sources import SiteError, digest
+from site_sources import (
+    CLOUDFLARE_ANALYTICS_ASSET,
+    CLOUDFLARE_ANALYTICS_ATTRIBUTE,
+    SiteError,
+    cloudflare_analytics_contract,
+    digest,
+)
 
 OWNER_FILE = ".research-site-owned.json"
 OWNER = "arc_nlp.research_site.v1"
@@ -44,9 +51,17 @@ class HTMLInventory(HTMLParser):
         self.ids: set[str] = set()
         self.links: list[tuple[str, str]] = []
         self.text: list[str] = []
+        self.analytics_scripts: list[tuple[str, dict[str, str | None]]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        source_name = PurePosixPath(unquote(urlsplit(attributes.get("src") or "").path)).name
+        if source_name == CLOUDFLARE_ANALYTICS_ASSET or any(
+            name == CLOUDFLARE_ANALYTICS_ATTRIBUTE or name.startswith("data-cf-") for name in attributes
+        ):
+            if len(attrs) != len(attributes):
+                raise SiteError(f"Duplicate analytics attribute in {self.location}")
+            self.analytics_scripts.append((tag, attributes))
         if tag in {"iframe", "object", "embed", "base", "form"}:
             raise SiteError(f"Forbidden HTML element {tag} in {self.location}")
         if any(name.lower().startswith("on") for name in attributes):
@@ -92,6 +107,16 @@ def validate_site(output: Path) -> dict[str, int]:
     for name, sha256 in manifest["outputs"].items():
         if digest((output / name).read_bytes()) != sha256:
             raise SiteError(f"Generated output has changed: {name}")
+    analytics = manifest.get("analytics")
+    if "analytics" in manifest:
+        if not isinstance(analytics, dict) or not analytics.get("token"):
+            raise SiteError("Invalid analytics publication contract")
+        if analytics != cloudflare_analytics_contract(analytics["token"]):
+            raise SiteError("Invalid analytics publication contract")
+        if not set(analytics["pages"]) | {analytics["loader"]} <= set(files):
+            raise SiteError("Missing analytics publication page or loader")
+    elif f"assets/{CLOUDFLARE_ANALYTICS_ASSET}" in files:
+        raise SiteError("Analytics loader published without an analytics contract")
     inventories: dict[str, HTMLInventory] = {}
     for name in files:
         path = output / name
@@ -107,6 +132,20 @@ def validate_site(output: Path) -> dict[str, int]:
             inventories[name] = parsed
     links = 0
     for name, parsed in inventories.items():
+        expected_analytics = []
+        if analytics and name in analytics["pages"]:
+            expected_analytics = [
+                (
+                    "script",
+                    {
+                        "defer": None,
+                        "src": posixpath.relpath(analytics["loader"], PurePosixPath(name).parent.as_posix()),
+                        CLOUDFLARE_ANALYTICS_ATTRIBUTE: analytics["token"],
+                    },
+                )
+            ]
+        if parsed.analytics_scripts != expected_analytics:
+            raise SiteError(f"Unexpected analytics script, metadata, or count in {name}")
         for value, attribute in parsed.links:
             links += 1
             parts = urlsplit(value)

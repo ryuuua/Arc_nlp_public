@@ -76,3 +76,41 @@ Third-party attribution for the scientific colour maps and FerMatter logo accomp
 The GitHub Actions workflow and repository README own deployment instructions.
 Only the validated generated site is a publication artifact; runtime outputs
 are not included.
+
+## Private access counts
+
+The optional `cloudflare_web_analytics_token` in `site.json` enables Cloudflare
+Web Analytics for the conference landing page and its local profile page only.
+An absent or empty value disables it. Set it to the 32-character public site
+token from **Web Analytics → Manage site → JS snippet**, after adding hostname
+`ryuuua.github.io` in the Cloudflare dashboard. This is the public identifier in
+`data-cf-beacon`, **not** a Cloudflare API token or an account credential.
+See [Cloudflare's manual setup](https://developers.cloudflare.com/web-analytics/get-started/).
+
+The local loader checks the exact HTTPS production origin and conference paths
+before loading the fixed Cloudflare beacon. Localhost previews, other hosts,
+documentation pages and other GitHub project paths do not load the beacon.
+The reviewed build records the explicit analytics scope and loader hashes.
+The general publication ban on inline scripts and remote HTML assets remains
+in place; this loader is the narrowly scoped, opt-in network integration.
+
+There is no visible counter, analytics dashboard, or analytics report in the
+published website. Statistics are viewed while signed in to Cloudflare at
+**Web Analytics → ryuuua.github.io → Page views**. Select the date range and
+filter the path to `/Arc_nlp_public/conference/`; direct visits to
+`/Arc_nlp_public/conference/index.html` can appear as a separate path, so include
+both when totaling the landing page. The profile uses
+`/Arc_nlp_public/conference/profile.html`. Keep dashboard access limited to the
+owner's Cloudflare account; do not publish dashboard exports or API credentials.
+
+These are approximate page-view counts, not identified people or a complete
+visitor log. Browser blocking or disabled JavaScript can prevent collection.
+Collection starts after the configured build is deployed; earlier visits cannot
+be reconstructed. Cloudflare's script also provides its standard timing metrics;
+this integration adds no custom events, advertising identifiers or public data
+endpoint. No additional browser storage is used by the local loader.
+
+To disable collection, remove or empty `cloudflare_web_analytics_token`, rebuild,
+review the new source-manifest digest, and deploy through the existing workflow.
+This removes the loader from the published pages without deleting saved
+Cloudflare statistics or changing the scientific content.

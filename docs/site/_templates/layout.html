@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="{{ relative_url(current, 'assets/code.css') }}">
   {% if 'poster-theme.css' in site.get('assets', []) %}<link rel="stylesheet" href="{{ relative_url(current, 'assets/poster-theme.css') }}">{% endif %}
   {% if page.get('layout') == 'conference' %}<link rel="stylesheet" href="{{ relative_url(current, 'assets/conference/conference.css') }}">{% endif %}
-  <script defer src="{{ relative_url(current, 'assets/site.js') }}"></script>
+  <script defer src="{{ relative_url(current, 'assets/site.js') }}"></script>{% if analytics %}
+  <script defer src="{{ relative_url(current, analytics.loader) }}" data-cloudflare-web-analytics-token="{{ analytics.token }}"></script>{% endif %}
 </head>
 <body{% if page.get("layout") == "conference" %} class="conference-hub"{% endif %} data-site-root="{{ relative_url(current, 'index.html') }}">
   <a class="skip-link" href="#main">Skip to content</a>

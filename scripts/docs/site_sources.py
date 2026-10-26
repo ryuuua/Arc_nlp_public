@@ -9,6 +9,10 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+CLOUDFLARE_ANALYTICS_ASSET = "cloudflare-analytics.js"
+CLOUDFLARE_ANALYTICS_PAGES = ("conference/index.html", "conference/profile.html")
+CLOUDFLARE_ANALYTICS_ATTRIBUTE = "data-cloudflare-web-analytics-token"
+
 
 class SiteError(ValueError):
     """An input or publication contract was not satisfied."""
@@ -16,6 +20,28 @@ class SiteError(ValueError):
 
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def cloudflare_analytics_contract(token: Any) -> dict[str, Any] | None:
+    """Describe the one supported optional analytics integration."""
+    if not isinstance(token, str) or (token and not re.fullmatch(r"[0-9a-f]{32}", token)):
+        raise SiteError("cloudflare_web_analytics_token must be empty or exactly 32 lowercase hexadecimal characters")
+    if not token:
+        return None
+    return {
+        "provider": "cloudflare-web-analytics",
+        "token": token,
+        "origin": "https://ryuuua.github.io",
+        "pages": list(CLOUDFLARE_ANALYTICS_PAGES),
+        "paths": [
+            "/Arc_nlp_public/conference/",
+            "/Arc_nlp_public/conference/index.html",
+            "/Arc_nlp_public/conference/profile.html",
+        ],
+        "loader": f"assets/{CLOUDFLARE_ANALYTICS_ASSET}",
+        "script_url": "https://static.cloudflareinsights.com/beacon.min.js",
+        "endpoint": "https://cloudflareinsights.com/cdn-cgi/rum",
+    }
 
 
 def safe_path(root: Path, relative: str) -> Path:
@@ -49,7 +75,13 @@ def load_config(root: Path) -> dict[str, Any]:
         config = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise SiteError("Invalid site.json") from exc
-    _keys(config, {"schema_version", "title", "tagline", "repository_url", "pages", "api"}, "site.json", {"assets"})
+    _keys(
+        config,
+        {"schema_version", "title", "tagline", "repository_url", "pages", "api"},
+        "site.json",
+        {"assets", "cloudflare_web_analytics_token"},
+    )
+    cloudflare_analytics_contract(config.get("cloudflare_web_analytics_token", ""))
     if type(config["schema_version"]) is not int or config["schema_version"] != 1:
         raise SiteError("Unsupported site schema")
     for field in ("title", "tagline", "repository_url"):
@@ -63,7 +95,7 @@ def load_config(root: Path) -> dict[str, Any]:
     assets = config.get("assets", [])
     if not isinstance(assets, list):
         raise SiteError("assets must be an explicit list")
-    asset_names = {"site.css", "site.js", "code.css", "search.json"}
+    asset_names = {"site.css", "site.js", "code.css", "search.json", CLOUDFLARE_ANALYTICS_ASSET}
     for asset in assets:
         if not isinstance(asset, str) or not re.fullmatch(
             r"(?:[A-Za-z0-9][A-Za-z0-9_.-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*\.(?:css|svg|json|txt)", asset
