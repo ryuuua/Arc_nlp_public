@@ -8,9 +8,11 @@
   <title>{{ page.title }} · {{ site.title }}</title>
   <link rel="stylesheet" href="{{ relative_url(current, 'assets/site.css') }}">
   <link rel="stylesheet" href="{{ relative_url(current, 'assets/code.css') }}">
+  {% if 'poster-theme.css' in site.get('assets', []) %}<link rel="stylesheet" href="{{ relative_url(current, 'assets/poster-theme.css') }}">{% endif %}
+  {% if page.get('layout') == 'conference' %}<link rel="stylesheet" href="{{ relative_url(current, 'assets/conference/conference.css') }}">{% endif %}
   <script defer src="{{ relative_url(current, 'assets/site.js') }}"></script>
 </head>
-<body data-site-root="{{ relative_url(current, 'index.html') }}">
+<body{% if page.get("layout") == "conference" %} class="conference-hub"{% endif %} data-site-root="{{ relative_url(current, 'index.html') }}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <a class="wordmark" href="{{ relative_url(current, 'index.html') }}" aria-label="Arc_nlp home"><span class="brand-symbol" aria-hidden="true">A<span>•</span></span>Arc<span class="wordmark-light">_nlp</span></a>
@@ -40,8 +42,8 @@
         <a href="{{ relative_url(current, 'source-manifest.json') }}">Build provenance</a>
       </footer>
     </main>
-    <aside class="toc" aria-label="On this page">
-    {% if toc %}<p class="nav-heading">On this page</p><nav>{% for heading in toc %}<a class="toc-level-{{ heading.level }}" href="#{{ heading.id }}">{{ heading.title }}</a>{% endfor %}</nav>{% endif %}
+    <aside class="toc" aria-label="{{ 'このページの内容' if page.lang == 'ja' else 'On this page' }}">
+    {% if toc %}<p class="nav-heading">{{ 'このページの内容' if page.lang == 'ja' else 'On this page' }}</p><nav>{% for heading in toc %}<a class="toc-level-{{ heading.level }}" href="#{{ heading.id }}">{{ heading.title }}</a>{% endfor %}</nav>{% endif %}
     </aside>
   </div>
   <dialog id="search-dialog" aria-labelledby="search-title">

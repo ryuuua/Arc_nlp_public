@@ -1,0 +1,71 @@
+{
+  "dataset": "twenty_newsgroups",
+  "k": 90,
+  "seed": 0,
+  "split": "validation",
+  "n_valid": 2827,
+  "row_model": "qwen3_embedding",
+  "column_model": "llama_embed_nemotron_8b",
+  "matrix_shape": [
+    2827,
+    2827
+  ],
+  "compute_dtype": "float64",
+  "full_diagonal_means": {
+    "a_aligned": 0.686642074123757,
+    "x_raw": -0.0018210744919048103,
+    "x_transformed": 0.7904860753830762
+  },
+  "subset_diagonal_means": {
+    "a_aligned": 0.6738828326030262,
+    "x_raw": -0.002867635009498364,
+    "x_transformed": 0.7889194886878415
+  },
+  "subset_rule": "200 equally spaced positions in original saved Validation row order; independent of similarities",
+  "matrix_statistics": {
+    "a_aligned": {
+      "diagonal_mean": 0.686642074123757,
+      "subset_diagonal_mean": 0.6738828326030262,
+      "historical_mean_absolute_delta": 0.0,
+      "all_pair_mean": 0.04167841674736213,
+      "off_diagonal_mean": 0.041450191815523355,
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "x_raw": {
+      "diagonal_mean": -0.0018210744919048103,
+      "subset_diagonal_mean": -0.002867635009498364,
+      "historical_mean_absolute_delta": 0.0,
+      "all_pair_mean": -0.002360566786335105,
+      "off_diagonal_mean": -0.0023607576894824622,
+      "minimum": -0.07971000406381737,
+      "maximum": 0.07434247954296186
+    },
+    "x_transformed": {
+      "diagonal_mean": 0.7904860753830762,
+      "subset_diagonal_mean": 0.7889194886878415,
+      "historical_mean_absolute_delta": 0.0,
+      "all_pair_mean": 0.22476036573219738,
+      "off_diagonal_mean": 0.22456017970613548,
+      "minimum": -0.006702722701162421,
+      "maximum": 0.8987995638226695
+    }
+  },
+  "relative_errors": {
+    "x_raw": 1.4155797763437696,
+    "x_transformed": 0.6135215455161424
+  },
+  "permutation_scope": "A columns only; saved Train-only Hungarian matching",
+  "transform_scope": "X feature dimensions only; saved Train-only scaled orthogonal map",
+  "diagonal": "same document ID across the two models",
+  "off_diagonal": "different Validation rows; repeated text is not excluded",
+  "new_aa_fit": false,
+  "new_aa_inference": false,
+  "new_map_fit": false,
+  "new_validation_cosine_computation": true,
+  "test_evaluation": false,
+  "historical_replay_tolerance": 1e-08,
+  "n_train": 16019,
+  "display_subset_count": 200,
+  "scope": "Historical K90; previously viewed exploratory Validation; not corrected-cache K128 or final Test."
+}
