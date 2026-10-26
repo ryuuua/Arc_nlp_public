@@ -412,3 +412,146 @@ def test_portable_site_builds_from_its_own_sources_with_conference_and_japanese_
     assert (output / "ja/index.html").is_file()
     assert (output / "ja/mathematics.html").is_file()
     assert "from arc_nlp." not in (output / "tutorial.html").read_text()
+
+
+def test_selected_assets_are_hashed_and_unselected_assets_are_not_published(project: Path) -> None:
+    selected = {
+        "poster-theme.css": "body { color: #004aad; }\n",
+        "conference/figure.svg": '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>\n',
+        "conference/summary.json": '{"mean": 0.854}\n',
+        "conference/NOTICE.txt": "Selected figure attribution.\n",
+    }
+    for name, content in selected.items():
+        path = project / "docs/site/_static" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    (project / "docs/site/_static/private.txt").write_text("NEVER_PUBLISH /Users/example/private")
+    set_config(project, lambda c: c.update(assets=list(selected)))
+    page = project / "docs/site/pages/index.md"
+    page.write_text(page.read_text() + "\n[Figure](assets/conference/figure.svg)\n")
+    output = project / "build"
+    build_site(project, output)
+    manifest = json.loads((output / "source-manifest.json").read_text())
+    for name, content in selected.items():
+        assert (output / "assets" / name).read_text() == content
+        expected = hashlib.sha256(content.encode()).hexdigest()
+        assert manifest["inputs"][f"docs/site/_static/{name}"] == expected
+        assert manifest["outputs"][f"assets/{name}"] == expected
+    assert "docs/site/_static/private.txt" not in manifest["inputs"]
+    assert not (output / "assets/private.txt").exists()
+    before = (output / "source-manifest.json").read_bytes()
+    build_site(project, output)
+    assert (output / "source-manifest.json").read_bytes() == before
+    (project / "docs/site/_static/conference/summary.json").write_text('{"mean": 0.790}\n')
+    build_site(project, output)
+    assert (output / "source-manifest.json").read_bytes() != before
+
+
+@pytest.mark.parametrize(
+    "assets",
+    [
+        None,
+        "poster-theme.css",
+        [None],
+        [{}],
+        [""],
+        ["../private.txt"],
+        ["conference/../../private.txt"],
+        ["/private.txt"],
+        ["conference\\private.txt"],
+        ["conference//figure.svg"],
+        ["conference/./figure.svg"],
+        ["conference/private.js"],
+        ["conference/figure.png"],
+        ["conference/figure.svg", "conference/figure.svg"],
+        ["conference/figure.svg", "conference/Figure.svg"],
+        ["site.css"],
+        ["Site.css"],
+        ["site.js"],
+        ["code.css"],
+        ["search.json"],
+    ],
+)
+def test_invalid_asset_allowlists_fail_closed(project: Path, assets) -> None:
+    set_config(project, lambda c: c.update(assets=assets))
+    with pytest.raises(SiteError):
+        build_site(project, project / "build")
+    assert not (project / "build").exists()
+
+
+@pytest.mark.parametrize("failure", ["missing", "symlink", "private"])
+def test_asset_input_failure_preserves_previous_build(project: Path, tmp_path: Path, failure: str) -> None:
+    output = project / "build"
+    build_site(project, output)
+    previous = (output / "source-manifest.json").read_bytes()
+    selected = project / "docs/site/_static/selected.txt"
+    if failure == "symlink":
+        outside = tmp_path / "outside.txt"
+        outside.write_text("External input.")
+        selected.symlink_to(outside)
+    elif failure == "private":
+        selected.write_text("/Users/example/private/report.txt")
+    set_config(project, lambda c: c.update(assets=["selected.txt"]))
+    with pytest.raises(SiteError):
+        build_site(project, output)
+    assert (output / "source-manifest.json").read_bytes() == previous
+    assert not (output / "assets/selected.txt").exists()
+
+
+def test_explicit_page_toc_supports_raw_html_headings_and_overrides_generated_toc(project: Path) -> None:
+    asset = project / "docs/site/_static/conference/conference.css"
+    asset.parent.mkdir(parents=True)
+    asset.write_text(".conference-hub { color: #004aad; }\n")
+    set_config(project, lambda c: c.update(assets=["conference/conference.css"]))
+    page = project / "docs/site/pages/index.md"
+    page.write_text(page.read_text() + '<h2 id="poster-summary">Poster summary</h2>\n')
+    set_config(
+        project,
+        lambda c: c["pages"][0].update(
+            layout="conference", toc=[{"id": "poster-summary", "title": "Result <summary>", "level": 2}]
+        ),
+    )
+    output = project / "build"
+    build_site(project, output)
+    html = (output / "index.html").read_text()
+    assert 'href="#poster-summary"' in html
+    assert "Result &lt;summary&gt;" in html
+    assert 'href="#reproducibility"' not in html
+    assert 'id="reproducibility"' in html
+    set_config(project, lambda c: c["pages"][0].update(toc=[]))
+    build_site(project, output)
+    assert 'href="#poster-summary"' not in (output / "index.html").read_text()
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"layout": "private"},
+        {"layout": None},
+        {"layout": []},
+        {"toc": None},
+        {"toc": "reproducibility"},
+        {"toc": [None]},
+        {"toc": [{"id": "reproducibility", "title": "Result"}]},
+        {"toc": [{"id": "reproducibility", "title": " ", "level": 2}]},
+        {"toc": [{"id": "reproducibility", "title": "Result", "level": True}]},
+        {"toc": [{"id": "reproducibility", "title": "Result", "level": 1}]},
+        {"toc": [{"id": "bad anchor", "title": "Result", "level": 2}]},
+        {"toc": [{"id": "../outside", "title": "Result", "level": 2}]},
+        {"toc": [{"id": [], "title": "Result", "level": 2}]},
+        {"toc": [{"id": "reproducibility", "title": "Result", "level": 2}] * 2},
+    ],
+)
+def test_invalid_page_presentation_options_fail_closed(project: Path, options) -> None:
+    set_config(project, lambda c: c["pages"][0].update(options))
+    with pytest.raises(SiteError):
+        build_site(project, project / "build")
+    assert not (project / "build").exists()
+
+
+def test_explicit_toc_cannot_bypass_anchor_validation(project: Path) -> None:
+    set_config(
+        project, lambda c: c["pages"][0].update(toc=[{"id": "missing", "title": "Missing", "level": 3}])
+    )
+    with pytest.raises(SiteError, match="Broken anchor"):
+        build_site(project, project / "build")

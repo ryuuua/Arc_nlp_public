@@ -1,0 +1,21 @@
+/* Poster palette: conference poster. UI only; scientific figures keep their scales. */
+:root {
+  --poster-blue:#004aad;
+  --poster-blue-deep:#003782;
+  --poster-blue-soft:#f2f7fe;
+  --poster-blue-line:#c1dafd;
+  --teal:var(--poster-blue);
+  --teal-deep:var(--poster-blue-deep);
+  --teal-soft:var(--poster-blue-soft);
+  --heading:var(--poster-blue);
+  --line:#dfe8f4;
+  --wash:#f7fafe;
+}
+.topbar { border-bottom-color:var(--poster-blue-line); }
+.hero-figure { background:linear-gradient(120deg,var(--poster-blue-soft),#fafcff); }
+.card:hover { background:var(--poster-blue-soft); border-color:var(--poster-blue-line); }
+.callout { background:var(--poster-blue-soft); border-color:var(--poster-blue); color:#284b78; }
+blockquote { border-left-color:var(--poster-blue-line); }
+pre.signature { color:var(--poster-blue-deep); background:var(--poster-blue-soft); border-color:var(--poster-blue-line); }
+#search-input { border-color:var(--poster-blue-line); background:#fcfdff; }
+.equation { border-color:var(--poster-blue-line); background:linear-gradient(110deg,var(--poster-blue-soft),#fafcff); color:var(--poster-blue-deep); }

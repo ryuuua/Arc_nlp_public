@@ -24,10 +24,10 @@ Relative links support the GitHub project prefix and nested language routes.
 
 ## Publication boundary
 
-`site.json` explicitly lists every Markdown page and API symbol. Source paths
+`site.json` explicitly lists every Markdown page, API symbol, and optional static asset. Source paths
 must match modules inside `src/neureps_arc_nlp/`. The build never recursively
 copies source trees, datasets, generated fits, operational notes or reports.
-Missing modules or symbols fail the build.
+Missing modules, symbols, or selected assets fail the build. Optional `assets` entries name UTF-8 CSS/SVG/JSON/TXT files relative to `docs/site/_static/`; they are emitted under `assets/`. Unlisted files are never copied. Traversal, symlinks, duplicate names, and collisions with built-in assets are rejected.
 
 Python declarations, docstrings, fields and selected source excerpts are read
 using AST parsing without executing the package. Authored per-symbol
@@ -65,9 +65,13 @@ canonical QR target is:
 
 `https://ryuuua.github.io/Arc_nlp_public/conference/`
 
-Verify the deployed route before printing a QR. The page does not invent a
-conference year, acceptance, paper identifier, authorship or license. It links
-to the project overview, runnable example, source repository and Japanese page.
+Verify the deployed route before printing a QR. The page follows the supplied poster, "アーキタイプ分析による文埋め込みの幾何学的構造の検討", including its verified title and authors. It presents the poster findings, distinguishes the selected K=90 / seed 0 comparison from the poster's overall 32-condition / ten-initialization design, and adds the saved Validation-document visualizations. It links to `conference/profile.html`, the project documentation, and the external FerMatter site. No conference acceptance or additional license is asserted.
+
+Conference pages use the optional `layout: "conference"`; an optional explicit `toc` list supplies IDs, titles, and heading levels for authored HTML headings. Other pages keep their existing layout and automatically derived Markdown table of contents.
+
+The selected SVGs and aggregate JSON contain only figures and summary values. Raw embeddings, document IDs/text, fit state, execution receipts, local preview provenance, and the source PDF are excluded. Scientific metrics/figures are preserved from the reviewed K=90 companion draft. The AA fit and evaluation runtime is not part of this publication. The existing personal website remains independently managed.
+
+Third-party attribution for the scientific colour maps and FerMatter logo accompanies those assets. The poster blue (`#004AAD`) is applied through an explicitly selected theme stylesheet.
 
 The GitHub Actions workflow and repository README own deployment instructions.
 Only the validated generated site is a publication artifact; runtime outputs

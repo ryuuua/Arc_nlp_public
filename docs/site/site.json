@@ -27,10 +27,81 @@
     },
     {
       "slug": "conference/index",
-      "title": "学会用ページ",
+      "title": "ポスター補足資料",
       "group": "Explore",
-      "description": "原型分析で埋め込み表現を理解する。Arc_nlpの研究課題、実行例、ソースコードを紹介します。",
-      "lang": "ja"
+      "description": "アーキタイプ分析による文埋め込みの幾何学的構造の検討。ポスター掲載結果と検証文書による補足分析。",
+      "lang": "ja",
+      "layout": "conference",
+      "toc": [
+        {
+          "id": "research-overview",
+          "title": "背景・方法",
+          "level": 2
+        },
+        {
+          "id": "label-results",
+          "title": "ラベルとの関連",
+          "level": 2
+        },
+        {
+          "id": "poster-reading",
+          "title": "モデル間比較",
+          "level": 2
+        },
+        {
+          "id": "cross-model-validation",
+          "title": "検証文書の補足結果",
+          "level": 2
+        },
+        {
+          "id": "validation-heatmaps",
+          "title": "検証文書の図",
+          "level": 2
+        },
+        {
+          "id": "validation-numbers",
+          "title": "数値比較",
+          "level": 2
+        },
+        {
+          "id": "validation-method",
+          "title": "推定手順",
+          "level": 2
+        },
+        {
+          "id": "interpretation-scope",
+          "title": "評価の制約",
+          "level": 2
+        },
+        {
+          "id": "poster-faq",
+          "title": "結果の解釈",
+          "level": 2
+        },
+        {
+          "id": "poster-future",
+          "title": "課題と今後の発展",
+          "level": 2
+        },
+        {
+          "id": "further-reading",
+          "title": "方法・実装",
+          "level": 2
+        },
+        {
+          "id": "related-work",
+          "title": "発表者・FerMatter",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "slug": "conference/profile",
+      "title": "発表者紹介 — 阿部龍之介",
+      "group": "Explore",
+      "description": "阿部龍之介の所属、研究関心、連絡先および関連ソフトウェアの紹介。",
+      "lang": "ja",
+      "layout": "conference"
     },
     {
       "slug": "mathematics",
@@ -236,5 +307,21 @@
         "summarize_simplex_block": "Evaluate row-simplex feasibility, a scaled Frank-Wolfe gap and projected displacement using caller-supplied factors and consistent diagnostic projections. It diagnoses factors rather than repairing them."
       }
     }
+  ],
+  "assets": [
+    "poster-theme.css",
+    "conference/conference.css",
+    "conference/validation_a_aligned_cork_transparent.svg",
+    "conference/validation_x_raw_cork_transparent.svg",
+    "conference/validation_x_transformed_cork_transparent.svg",
+    "conference/validation_full_heatmaps_cork.svg",
+    "conference/validation_three_heatmaps_cork.svg",
+    "conference/20newsgroups_k90_raw_P_TP_cork.svg",
+    "conference/summary.json",
+    "conference/poster-summary.json",
+    "conference/cmcrameri_LICENSE.txt",
+    "conference/fermat-light.svg",
+    "conference/FerMatter-LICENSE.txt",
+    "conference/FerMatter-NOTICE.txt"
   ]
 }

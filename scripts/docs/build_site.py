@@ -68,7 +68,7 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
             current=url,
             navigation_groups=groups.items(),
             content=Markup(content),
-            toc=toc,
+            toc=page.get("toc", toc),
         )
         search.append({"title": page["title"], "url": url, "text": search_text(content)[:16000]})
 
@@ -94,7 +94,7 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
         content,
         [],
     )
-    for name in ASSETS:
+    for name in (*ASSETS, *config.get("assets", [])):
         outputs[f"assets/{name}"] = read(f"docs/site/_static/{name}")
     outputs["assets/code.css"] = HtmlFormatter(style="friendly").get_style_defs(".highlight, pre code") + "\n"
     outputs["assets/search.json"] = json_text(search)

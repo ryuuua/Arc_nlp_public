@@ -1,0 +1,62 @@
+{
+  "dataset": "twenty_newsgroups",
+  "k": 90,
+  "seed": 0,
+  "dimension": 4096,
+  "a_validation_aligned_cosine": 0.686642074123757,
+  "historical_summary": {
+    "a_valid_aligned_cosine": 0.686642074123757,
+    "dataset": "twenty_newsgroups",
+    "dataset_display": "20 Newsgroups",
+    "dimension": 4096,
+    "half_split_prediction_cosine": 0.9027663412956289,
+    "k": 90,
+    "n_train": 16019,
+    "n_valid": 2827,
+    "orthogonality_relative_error": 2.6309554860000063e-12,
+    "roundtrip_relative_error": 2.649347095905744e-12,
+    "scale": 0.8261323441964636,
+    "x_permutation_null_max": 0.2349356761987698,
+    "x_valid_cosine": 0.7904860753830762,
+    "z_permutation_null_max": 0.3935097201743455,
+    "z_random_match_expectation": 0.38019907850896345,
+    "z_transported_above_random": 0.4733241086197599,
+    "z_transported_cosine": 0.8535231871287233,
+    "z_untransformed_cosine": -0.003204809247973409
+  },
+  "stages": {
+    "raw": {
+      "diagonal_mean": -0.00465826038086847,
+      "all_pair_mean": -0.004326309025438912,
+      "diagonal_minus_all_pair_mean": -0.0003319513554295578,
+      "diagonal_min": -0.04509804300994076,
+      "diagonal_max": 0.026746430825497814,
+      "diagonal_is_train_A_matched": false
+    },
+    "permutation_only": {
+      "diagonal_mean": -0.003204809247973409,
+      "all_pair_mean": -0.004326309025438911,
+      "diagonal_minus_all_pair_mean": 0.001121499777465502,
+      "diagonal_min": -0.038757720080289784,
+      "diagonal_max": 0.02926399663613738,
+      "diagonal_is_train_A_matched": true
+    },
+    "transform_only": {
+      "diagonal_mean": 0.39108935236762554,
+      "all_pair_mean": 0.38019907850896345,
+      "diagonal_minus_all_pair_mean": 0.010890273858662092,
+      "diagonal_min": 0.18854859077117342,
+      "diagonal_max": 0.9736577016574749,
+      "diagonal_is_train_A_matched": false
+    },
+    "transform_and_permutation": {
+      "diagonal_mean": 0.8535231871287233,
+      "all_pair_mean": 0.38019907850896345,
+      "diagonal_minus_all_pair_mean": 0.4733241086197599,
+      "diagonal_min": 0.24256031436732475,
+      "diagonal_max": 0.9799525550927597,
+      "diagonal_is_train_A_matched": true
+    }
+  },
+  "matched_gain_from_T": 0.8567279963766967
+}
