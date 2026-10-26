@@ -18,7 +18,16 @@ from jinja2 import DictLoader, Environment, select_autoescape
 from markupsafe import Markup
 from pygments.formatters import HtmlFormatter
 from site_render import highlight_code, relative_url, render_markdown, search_text
-from site_sources import SiteError, digest, extract_symbols, load_config, safe_path
+from site_sources import (
+    CLOUDFLARE_ANALYTICS_ASSET,
+    CLOUDFLARE_ANALYTICS_PAGES,
+    SiteError,
+    cloudflare_analytics_contract,
+    digest,
+    extract_symbols,
+    load_config,
+    safe_path,
+)
 from site_validation import OWNER, OWNER_FILE, check_public_text, validate_output_destination, validate_site
 
 TEMPLATES = ("layout.html", "api.html", "api_index.html")
@@ -35,6 +44,7 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
     output = output.absolute()
     validate_output_destination(output, root)
     config = load_config(root)
+    analytics = cloudflare_analytics_contract(config.get("cloudflare_web_analytics_token", ""))
     inputs: dict[str, str] = {}
 
     def read(relative: str) -> str:
@@ -69,6 +79,7 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
             navigation_groups=groups.items(),
             content=Markup(content),
             toc=page.get("toc", toc),
+            analytics=analytics if url in CLOUDFLARE_ANALYTICS_PAGES else None,
         )
         search.append({"title": page["title"], "url": url, "text": search_text(content)[:16000]})
 
@@ -96,6 +107,8 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
     )
     for name in (*ASSETS, *config.get("assets", [])):
         outputs[f"assets/{name}"] = read(f"docs/site/_static/{name}")
+    if analytics:
+        outputs[analytics["loader"]] = read(f"docs/site/_static/{CLOUDFLARE_ANALYTICS_ASSET}")
     outputs["assets/code.css"] = HtmlFormatter(style="friendly").get_style_defs(".highlight, pre code") + "\n"
     outputs["assets/search.json"] = json_text(search)
     outputs[".nojekyll"] = ""
@@ -122,6 +135,8 @@ def build_site(root: Path, output: Path) -> dict[str, int]:
             for module in modules
         ],
     }
+    if analytics:
+        manifest["analytics"] = analytics
     outputs["source-manifest.json"] = json_text(manifest)
     outputs[OWNER_FILE] = json_text({"owner": OWNER, "files": sorted([*outputs, OWNER_FILE])})
     output.parent.mkdir(parents=True, exist_ok=True)

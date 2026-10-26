@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts/docs"))
 
 from build_site import build_site, check_site, main  # noqa: E402
-from site_sources import SiteError, extract_symbols  # noqa: E402
+from site_sources import SiteError, cloudflare_analytics_contract, extract_symbols  # noqa: E402
 from site_validation import validate_site  # noqa: E402
 
 
@@ -550,8 +551,276 @@ def test_invalid_page_presentation_options_fail_closed(project: Path, options) -
 
 
 def test_explicit_toc_cannot_bypass_anchor_validation(project: Path) -> None:
-    set_config(
-        project, lambda c: c["pages"][0].update(toc=[{"id": "missing", "title": "Missing", "level": 3}])
-    )
+    set_config(project, lambda c: c["pages"][0].update(toc=[{"id": "missing", "title": "Missing", "level": 3}]))
     with pytest.raises(SiteError, match="Broken anchor"):
         build_site(project, project / "build")
+
+
+TEST_ANALYTICS_TOKEN = "0123456789abcdef0123456789abcdef"
+
+
+@pytest.fixture
+def analytics_project(project: Path) -> Path:
+    static = project / "docs/site/_static"
+    shutil.copyfile(REPO / "docs/site/_static/cloudflare-analytics.js", static / "cloudflare-analytics.js")
+    (static / "conference").mkdir()
+    (static / "conference/conference.css").write_text(".conference-hub { color: blue; }\n")
+    (project / "docs/site/pages/conference").mkdir()
+    pages = []
+    for slug in ("conference/index", "conference/profile", "conference/other"):
+        (project / f"docs/site/pages/{slug}.md").write_text(f"# {slug}\n")
+        pages.append(
+            {
+                "slug": slug,
+                "title": slug,
+                "description": "Fixture",
+                "group": "Conference",
+                "lang": "en",
+                "layout": "conference",
+            }
+        )
+    set_config(
+        project,
+        lambda c: c.update(
+            pages=c["pages"] + pages,
+            assets=["conference/conference.css"],
+            cloudflare_web_analytics_token=TEST_ANALYTICS_TOKEN,
+        ),
+    )
+    return project
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_cloudflare_analytics_disabled_without_token(project: Path, configured: bool) -> None:
+    if configured:
+        set_config(project, lambda c: c.update(cloudflare_web_analytics_token=""))
+    output = project / "build"
+    build_site(project, output)
+    manifest = json.loads((output / "source-manifest.json").read_text())
+    assert "analytics" not in manifest
+    assert not (output / "assets/cloudflare-analytics.js").exists()
+    assert all("data-cloudflare-" not in path.read_text() for path in output.rglob("*.html"))
+
+
+@pytest.mark.parametrize("token", [None, False, 0, [], {}, " ", "YOUR_TOKEN", "A" * 32, "a" * 31, "a" * 33])
+def test_invalid_cloudflare_analytics_token_fails_closed(project: Path, token) -> None:
+    set_config(project, lambda c: c.update(cloudflare_web_analytics_token=token))
+    with pytest.raises(SiteError, match="cloudflare_web_analytics_token"):
+        build_site(project, project / "build")
+    assert not (project / "build").exists()
+
+
+def test_cloudflare_analytics_scope_provenance_and_determinism(analytics_project: Path) -> None:
+    output = analytics_project / "build"
+    build_site(analytics_project, output)
+    manifest_path = output / "source-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    contract = cloudflare_analytics_contract(TEST_ANALYTICS_TOKEN)
+    assert manifest["analytics"] == contract
+    enabled_html = {page.relative_to(output).as_posix(): page.read_bytes() for page in output.rglob("*.html")}
+    for page in output.rglob("*.html"):
+        html = page.read_text()
+        expected = int(page.relative_to(output).as_posix() in contract["pages"])
+        assert html.count("data-cloudflare-web-analytics-token=") == expected
+        assert html.count("cloudflare-analytics.js") == expected
+        assert "static.cloudflareinsights.com" not in html
+    loader = "docs/site/_static/cloudflare-analytics.js"
+    loader_hash = hashlib.sha256((analytics_project / loader).read_bytes()).hexdigest()
+    assert manifest["inputs"][loader] == manifest["outputs"][contract["loader"]] == loader_hash
+    before = manifest_path.read_bytes()
+    build_site(analytics_project, output)
+    assert manifest_path.read_bytes() == before
+    set_config(analytics_project, lambda c: c.update(cloudflare_web_analytics_token=""))
+    build_site(analytics_project, output)
+    assert "analytics" not in json.loads(manifest_path.read_text())
+    assert not (output / contract["loader"]).exists()
+    for name, html in enabled_html.items():
+        if name not in contract["pages"]:
+            assert (output / name).read_bytes() == html
+
+
+@pytest.mark.parametrize(
+    "mutation", ["missing", "duplicate", "token", "extra", "missing-token", "duplicate-token", "scope"]
+)
+def test_cloudflare_analytics_metadata_cannot_be_forged(analytics_project: Path, mutation: str) -> None:
+    output = analytics_project / "build"
+    build_site(analytics_project, output)
+    name = "conference/index.html"
+    tag = (
+        '<script defer src="../assets/cloudflare-analytics.js" '
+        f'data-cloudflare-web-analytics-token="{TEST_ANALYTICS_TOKEN}"></script>'
+    )
+    changed = {
+        "missing": "",
+        "duplicate": tag + tag,
+        "token": tag.replace(TEST_ANALYTICS_TOKEN, "f" * 32),
+        "extra": tag.replace(" defer ", " async defer "),
+        "missing-token": '<script defer src="../assets/cloudflare-analytics.js"></script>',
+        "duplicate-token": tag.replace(" defer ", f' data-cloudflare-web-analytics-token="{"f" * 32}" defer '),
+        "scope": tag,
+    }[mutation]
+    if mutation == "scope":
+        name = "conference/other.html"
+        html = (output / name).read_text().replace("</head>", changed + "</head>")
+    else:
+        html = (output / name).read_text().replace(tag, changed)
+    (output / name).write_text(html)
+    # Refresh the content digest so this tests the publication contract, not only integrity.
+    manifest_path = output / "source-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["outputs"][name] = hashlib.sha256(html.encode()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(SiteError, match="analytics"):
+        validate_site(output)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("provider", "arbitrary"),
+        ("origin", "https://example.com"),
+        ("pages", ["index.html"]),
+        ("paths", ["/"]),
+        ("script_url", "https://example.com/beacon.js"),
+        ("endpoint", "https://example.com/collect"),
+        ("loader", "assets/site.js"),
+        ("token", ""),
+    ],
+)
+def test_cloudflare_analytics_manifest_cannot_expand_scope(analytics_project: Path, field: str, value) -> None:
+    output = analytics_project / "build"
+    build_site(analytics_project, output)
+    manifest_path = output / "source-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["analytics"][field] = value
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(SiteError, match="analytics"):
+        validate_site(output)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '<div data-cloudflare-web-analytics-token="0123456789abcdef0123456789abcdef"></div>',
+        '<div data-cf-beacon="{}"></div>',
+        '<script defer src="assets/cloudflare-analytics.js"></script>',
+    ],
+)
+def test_disabled_cloudflare_analytics_rejects_authored_metadata(project: Path, content: str) -> None:
+    (project / "docs/site/pages/index.md").write_text("# Overview\n\n" + content)
+    with pytest.raises(SiteError, match="analytics"):
+        build_site(project, project / "build")
+
+
+@pytest.mark.parametrize(
+    "url", ["https://example.com/tracker.js", "https://static.cloudflareinsights.com/beacon.min.js"]
+)
+def test_enabled_cloudflare_analytics_still_rejects_remote_html_scripts(analytics_project: Path, url: str) -> None:
+    (analytics_project / "docs/site/pages/conference/index.md").write_text(
+        f'# Conference\n\n<script src="{url}"></script>'
+    )
+    with pytest.raises(SiteError, match="remote asset URL"):
+        build_site(analytics_project, analytics_project / "build")
+
+
+def test_cloudflare_analytics_requires_both_scoped_pages(analytics_project: Path) -> None:
+    set_config(
+        analytics_project, lambda c: c.update(pages=[p for p in c["pages"] if p["slug"] != "conference/profile"])
+    )
+    with pytest.raises(SiteError, match="Missing analytics publication"):
+        build_site(analytics_project, analytics_project / "build")
+
+
+def test_cloudflare_analytics_loader_runtime_origin_path_token_and_duplicate_guards() -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Existing Node.js runtime unavailable")
+    contract = cloudflare_analytics_contract(TEST_ANALYTICS_TOKEN)
+    cases = [
+        {"origin": contract["origin"], "path": path, "token": TEST_ANALYTICS_TOKEN, "expected": 1}
+        for path in contract["paths"]
+    ]
+    cases += [
+        {"origin": origin, "path": contract["paths"][0], "token": TEST_ANALYTICS_TOKEN, "expected": 0}
+        for origin in (
+            "http://localhost:8765",
+            "http://127.0.0.1:8765",
+            "null",
+            "https://preview.example.com",
+            "http://ryuuua.github.io",
+            "https://ryuuua.github.io:8765",
+            "https://ryuuua.github.io.evil.example",
+        )
+    ]
+    cases += [
+        {"origin": contract["origin"], "path": path, "token": TEST_ANALYTICS_TOKEN, "expected": 0}
+        for path in ("/Arc_nlp_public/index.html", "/Arc_nlp_public/conference/other.html", "/other/conference/")
+    ]
+    cases += [
+        {"origin": contract["origin"], "path": contract["paths"][0], "token": token, "expected": 0}
+        for token in ("", "YOUR_TOKEN", "A" * 32, "a" * 31)
+    ]
+    cases += [
+        {
+            "origin": contract["origin"],
+            "path": contract["paths"][0],
+            "token": TEST_ANALYTICS_TOKEN,
+            "expected": 0,
+            "existing": True,
+        },
+        {
+            "origin": contract["origin"],
+            "path": contract["paths"][0],
+            "token": TEST_ANALYTICS_TOKEN,
+            "expected": 0,
+            "missingScript": True,
+        },
+    ]
+    harness = r"""
+const fs = require("node:fs");
+const vm = require("node:vm");
+const assert = require("node:assert/strict");
+const input = JSON.parse(fs.readFileSync(0, "utf8"));
+for (const item of input.cases) {
+  const appended = [];
+  let created = 0;
+  const document = {
+    currentScript: item.missingScript ? null : { getAttribute: () => item.token },
+    querySelector: () => item.existing || appended.length ? {} : null,
+    createElement: (tag) => {
+      assert.equal(tag, "script");
+      created++;
+      return { attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
+    },
+    head: { appendChild: (element) => appended.push(element) },
+  };
+  const context = { document, window: { location: { origin: item.origin, pathname: item.path } } };
+  vm.runInNewContext(input.source, context);
+  vm.runInNewContext(input.source, context);
+  assert.equal(created, item.expected, JSON.stringify(item));
+  assert.equal(appended.length, item.expected, JSON.stringify(item));
+  if (appended.length) {
+    assert.equal(appended[0].src, input.contract.script_url);
+    assert.equal(appended[0].type, "module");
+    assert.deepEqual(JSON.parse(appended[0].attributes["data-cf-beacon"]), { token: item.token });
+  }
+}
+// DOM failures remain optional analytics failures, without breaking page scripts.
+vm.runInNewContext(input.source, {
+  window: { location: { origin: input.contract.origin, pathname: input.contract.paths[0] } },
+  document: { get currentScript() { throw new Error("Unavailable DOM"); } },
+});
+"""
+    subprocess.run(
+        [node, "-e", harness],
+        input=json.dumps(
+            {
+                "source": (REPO / "docs/site/_static/cloudflare-analytics.js").read_text(),
+                "contract": contract,
+                "cases": cases,
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
