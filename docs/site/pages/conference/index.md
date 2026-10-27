@@ -103,5 +103,5 @@
 
 <section class="related-work" aria-labelledby="related-work">
 <h2 id="related-work">発表者・関連ソフトウェア</h2>
-<div class="related-columns"><div><h3>阿部龍之介 <small>Ryunosuke Abe</small></h3><p>自然言語処理・神経科学・表現学習に関心があります。学部では文系分野を学び、修士課程から情報系に進みました！</p><a href="profile.html">プロフィールを見る →</a></div><div><h3><img class="fermatter-mark" src="../assets/conference/fermat-light.svg" alt="" width="32" height="32">FerMatter</h3><p>LaTeX / Typst、TikZ / CeTZを扱い、SVG・PDF・画像を出力できるツールです。こちらもぜひご覧ください！</p><a href="https://fermatter.github.io/" target="_blank" rel="noopener noreferrer">FerMatter公式サイト ↗</a></div></div>
+<div class="related-columns"><div><h3>阿部龍之介 <small>Ryunosuke Abe</small></h3><p>自然言語処理・神経科学・表現学習が主な関心領域です。学部は文系で哲学専攻でしたが特に今の研究と関係ないと思っています。修士課程から情報系に進みました！</p><a href="profile.html">プロフィール →</a></div><div><h3><img class="fermatter-mark" src="../assets/conference/fermat-light.svg" alt="" width="32" height="32">FerMatter</h3><p>LaTeX / Typst、TikZ / CeTZを扱い、SVG・PDF・画像を出力できるツールです。こちらもぜひご覧ください！</p><a href="https://fermatter.github.io/" target="_blank" rel="noopener noreferrer">FerMatter公式サイト ↗</a></div></div>
 </section>
